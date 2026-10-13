@@ -51,3 +51,10 @@ def add_workout(workout: WorkoutIn):
     new_id = cursor.lastrowid
     conn.close()
     return {"id": new_id, "date": workout.date, "exercise": workout.exercise}
+
+@app.get("/workouts/{workout_id}")
+def get_workout(workout_id: int):
+    conn = get_connection()
+    row = conn.execute("SELECT id, date, exercise FROM workouts WHERE id=?", (workout_id,)).fetchone()
+    conn.close()
+    return dict(row)
