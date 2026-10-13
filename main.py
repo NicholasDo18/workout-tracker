@@ -1,6 +1,7 @@
 import sqlite3
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+
 
 app = FastAPI()
 
@@ -57,4 +58,6 @@ def get_workout(workout_id: int):
     conn = get_connection()
     row = conn.execute("SELECT id, date, exercise FROM workouts WHERE id=?", (workout_id,)).fetchone()
     conn.close()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Workout not found")
     return dict(row)
