@@ -1,16 +1,33 @@
+import sqlite3
 from fastapi import FastAPI
 from pydantic import BaseModel
 
 app = FastAPI()
 
+DB_FILE = "workouts.db"
+
+def get_connection():
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def create_table():
+    conn = get_connection()
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS workouts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT NOT NULL,
+            exercise TEXT NOT NULL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+create_table()
+
 class WorkoutIn(BaseModel):
     date: str
     exercise: str
-
-workouts = [
-    {"id": 1, "date": "2026-10-10", "exercise": "Bench press"},
-    {"id": 2, "date": "2026-10-12", "exercise": "Squat"},
-]
 
 @app.get("/")
 def root():
@@ -18,14 +35,19 @@ def root():
 
 @app.get("/workouts")
 def get_workouts():
-    return workouts
+    conn = get_connection()
+    rows = conn.execute("SELECT id, date, exercise FROM workouts").fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
 
 @app.post("/workouts")
 def add_workout(workout: WorkoutIn):
-    new_workout = {
-        "id": len(workouts) + 1,
-        "date": workout.date,
-        "exercise": workout.exercise,
-    }
-    workouts.append(new_workout)
-    return new_workout
+    conn = get_connection()
+    cursor = conn.execute(
+        "INSERT INTO workouts (date, exercise) VALUES (?, ?)",
+        (workout.date, workout.exercise),
+    )
+    conn.commit()
+    new_id = cursor.lastrowid
+    conn.close()
+    return {"id": new_id, "date": workout.date, "exercise": workout.exercise}
